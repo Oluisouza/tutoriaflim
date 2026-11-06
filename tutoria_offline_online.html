@@ -165,9 +165,28 @@ label.lbl{display:block;font-size:.66rem;text-transform:uppercase;letter-spacing
   border-radius:.95rem;padding:14px;margin-top:18px}
 .consent input{width:21px;height:21px;margin:1px 0 0;accent-color:var(--indigo);flex:none}
 .consent label{font-size:.84rem;color:var(--slate-600);line-height:1.5;font-weight:500}
-.ok{text-align:center;padding:38px 18px}
-.ok .ic{width:80px;height:80px;margin:0 auto 18px;border-radius:50%;background:linear-gradient(135deg,#34d399,#0d9488);
-  display:grid;place-items:center;color:#fff;font-size:2.3rem;box-shadow:0 16px 34px rgba(13,148,136,.3)}
+.ok{text-align:center;padding:34px 18px}
+.ok .ic{width:84px;height:84px;margin:0 auto 20px;border-radius:50%;background:linear-gradient(135deg,#34d399,#0d9488);
+  display:grid;place-items:center;color:#fff;box-shadow:0 16px 34px rgba(13,148,136,.3);
+  animation:surgir .45s cubic-bezier(.2,.9,.3,1.3) both}
+.ok .ic svg{width:44px;height:44px;stroke:#fff;stroke-width:3.2;fill:none;
+  stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:32;stroke-dashoffset:32;
+  animation:risco .4s .3s ease-out forwards}
+@keyframes surgir{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes risco{to{stroke-dashoffset:0}}
+.ok h2{font-size:1.6rem;margin-bottom:6px}
+/* Estado real do envio: a pessoa merece saber se a resposta chegou mesmo. */
+.status-envio{display:inline-flex;align-items:center;gap:7px;border-radius:999px;
+  padding:8px 15px;font-size:.82rem;font-weight:700;margin-bottom:20px}
+.status-envio.enviada{background:#ecfdf5;border:1px solid #a7f3d0;color:#047857}
+.status-envio.pendente{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.status-envio.local{background:var(--slate-100);border:1px solid var(--slate-200);color:var(--slate-600)}
+.status-envio .pt{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.sobre-projeto{background:linear-gradient(135deg,#eef2ff,#eff6ff);border:1px solid #e0e7ff;
+  border-radius:1.1rem;padding:17px 19px;margin:4px auto 22px;max-width:460px;text-align:left}
+.sobre-projeto p{margin:0;font-size:.88rem;line-height:1.55;color:var(--slate-600);font-weight:500}
+.sobre-projeto p+p{margin-top:8px}
+.sobre-projeto b{color:var(--slate-700)}
 
 /* ---------- Painel / anexo ---------- */
 .contador{position:fixed;right:13px;bottom:13px;background:var(--slate-800);color:#fff;border-radius:999px;
@@ -302,12 +321,17 @@ td.num,th.num{text-align:center;width:40px}
   <!-- ===== 8. FIM ===== -->
   <section id="tela-fim" class="card hidden">
     <div class="ok">
-      <div class="ic">✓</div>
-      <h2>Obrigado!</h2>
-      <p class="lead">Sua avaliação foi registrada. Boa feira!</p>
-      <div class="btn-row" style="justify-content:center">
-        <button class="btn" onclick="reiniciar()">Próximo participante</button>
+      <div class="ic"><svg viewBox="0 0 24 24"><polyline points="4,12.5 9.5,18 20,7"/></svg></div>
+      <h2 id="fim-titulo">Obrigado!</h2>
+      <p class="lead" id="fim-texto" style="margin-bottom:14px"></p>
+      <div id="fim-status" class="status-envio"></div>
+      <div class="sobre-projeto" id="fim-sobre">
+        <p><b>O que é o Tutor.IA:</b> um projeto de extensão universitária de Engenharia de Software
+        da Universidade de Vassouras, campus Maricá.</p>
+        <p>A ferramenta corrige redações no modelo do ENEM nas 5 competências oficiais, com nota e
+        comentário, para apoiar quem ensina e quem estuda redação.</p>
       </div>
+      <div class="btn-row" id="fim-botoes" style="justify-content:center"></div>
     </div>
   </section>
 
@@ -799,8 +823,10 @@ function enviarAvaliacao(){
   r.codigo = hash(JSON.stringify({dispositivo:r.dispositivo,seq:r.seq,iso:r.iso,nome:r.nome,
     perfil:r.perfil,notas:r.notas,comentario:r.comentario,anterior}));
   respostas.push(r);
-  salvar(); atualizarContador(); irPara('fim');
-  sincronizarPendentes();   // só faz algo se o SUPABASE estiver configurado
+  salvar(); atualizarContador();
+  montarTelaFim(r); irPara('fim');
+  // O envio é assíncrono: a tela já aparece e o status se atualiza quando resolve.
+  sincronizarPendentes().then(() => montarTelaFim(r));
   if(!persistenciaOk) alert('Atenção da equipe: este navegador não está guardando as respostas em disco. Exporte o CSV pelo painel antes de fechar a aba.');
 }
 
@@ -926,6 +952,47 @@ async function sincronizarPendentes(){
   } finally { sincronizando = false; }
 }
 window.addEventListener('online', sincronizarPendentes);
+/* A tela final muda conforme onde a página está rodando:
+   - versão da equipe (tablet compartilhado): o foco é liberar para a próxima pessoa;
+   - versão pública (celular do visitante): "próximo participante" não faz sentido,
+     o convite é continuar explorando.
+   O status mostra se a resposta foi mesmo para o banco, sem prometer o que não houve. */
+function montarTelaFim(r){
+  const equipe = CONFIG.painelHabilitado;
+  const titulo = document.getElementById('fim-titulo');
+  const texto  = document.getElementById('fim-texto');
+  const status = document.getElementById('fim-status');
+  const sobre  = document.getElementById('fim-sobre');
+  const botoes = document.getElementById('fim-botoes');
+
+  titulo.textContent = equipe ? 'Avaliação registrada' : 'Obrigado, ' + primeiroNome(r) + '!';
+  texto.textContent  = equipe
+    ? 'Pode passar o aparelho para a próxima pessoa.'
+    : 'Sua avaliação entra no relatório final do nosso projeto de extensão. Ajuda muito.';
+
+  if (!remotoAtivo()){
+    status.className = 'status-envio local';
+    status.innerHTML = '<span class="pt"></span>Registrada neste aparelho';
+  } else if (r && r.sincronizado){
+    status.className = 'status-envio enviada';
+    status.innerHTML = '<span class="pt"></span>Resposta enviada com sucesso';
+  } else {
+    status.className = 'status-envio pendente';
+    status.innerHTML = '<span class="pt"></span>Guardada. Será enviada quando a conexão voltar';
+  }
+
+  sobre.style.display = equipe ? 'none' : '';
+  botoes.innerHTML = equipe
+    ? `<button class="btn" onclick="reiniciar()">Próximo participante</button>
+       <button class="btn ghost" onclick="irPara('escolha')">Ver outra redação</button>`
+    : `<button class="btn" onclick="irPara('escolha')">Ver outra redação</button>`;
+}
+
+function primeiroNome(r){
+  const n = (r && r.nome ? r.nome : '').trim().split(/\s+/)[0] || '';
+  return n ? n.charAt(0).toUpperCase() + n.slice(1) : 'obrigado';
+}
+
 function reiniciar(){
   atual=null; palpiteRotulo=''; notas={}; perfilSel=null;
   document.getElementById('nome').value=''; document.getElementById('comentario').value='';
