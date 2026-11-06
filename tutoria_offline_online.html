@@ -630,7 +630,14 @@ const CONFIG = {
 /* ==== FIM CONFIG ==== */
 
 const SENHA_PAINEL = CONFIG.senhaPainel;
-const SUPABASE = { url: CONFIG.supabaseUrl, anonKey: CONFIG.supabaseKey, tabela: CONFIG.tabela };
+/* .trim(): uma chave colada numa variável de ambiente costuma trazer espaço ou
+   quebra de linha no fim, invisível na tela e suficiente para o Supabase
+   devolver 401. */
+const SUPABASE = {
+  url: (CONFIG.supabaseUrl || '').trim(),
+  anonKey: (CONFIG.supabaseKey || '').trim(),
+  tabela: (CONFIG.tabela || 'avaliacoes_flim').trim()
+};
 const CHAVE_DISPOSITIVO = 'tutoria_id_dispositivo';
 
 /* ========================= ESTADO ========================= */
@@ -813,7 +820,7 @@ function cabecalhosSupabase(comApenasApikey){
   const h = {
     'apikey': SUPABASE.anonKey,
     'Content-Type': 'application/json',
-    'Prefer': 'return=minimal,resolution=ignore-duplicates'
+    'Prefer': 'return=minimal'
   };
   if (!comApenasApikey) h['Authorization'] = 'Bearer ' + SUPABASE.anonKey;
   return h;
@@ -824,10 +831,17 @@ function cabecalhosSupabase(comApenasApikey){
 function conferirChave(){
   const k = SUPABASE.anonKey || '';
   if (!k) return;
+  const bruta = CONFIG.supabaseKey || '';
+  if (bruta !== bruta.trim())
+    console.warn('[Tutor.IA] A chave vinha com espaço ou quebra de linha nas pontas. Foi limpa automaticamente.');
   if (k.includes('…') || k.includes('...'))
     console.error('[Tutor.IA] A chave contém reticências: foi copiada cortada da tela. Use o botão Copy do Supabase.');
   else if (k.length < 40)
     console.warn('[Tutor.IA] A chave tem só ' + k.length + ' caracteres e parece incompleta.');
+  if (!/^(sb_publishable_|eyJ)/.test(k))
+    console.warn('[Tutor.IA] A chave não começa com sb_publishable_ nem com eyJ. Confira se é a publishable key.');
+  if (k.startsWith('sb_secret_'))
+    console.error('[Tutor.IA] Esta é a SECRET key. Ela nunca deve ir para uma página pública. Use a publishable key.');
 }
 
 /* A tela "Data API" do Supabase mostra a URL já com /rest/v1/ no fim, enquanto
@@ -841,10 +855,13 @@ function baseSupabase(){
 let soApikey = false;   // vira true se o gateway recusar o header Authorization
 
 async function enviarRemoto(r){
-  // on_conflict + ignore-duplicates: se a resposta JÁ foi gravada numa tentativa
-  // anterior cuja confirmação se perdeu, o reenvio é aceito em silêncio em vez
-  // de devolver 409 e travar a fila de pendentes para sempre.
-  const url = `${baseSupabase()}/rest/v1/${SUPABASE.tabela}?on_conflict=dispositivo,seq`;
+  /* INSERT puro, SEM on_conflict/ignore-duplicates. Aquilo seria um upsert, que
+     exige permissão de UPDATE além de INSERT; a policy desta tabela concede só
+     INSERT (de propósito: ninguém deve poder alterar resposta já gravada), e o
+     Postgres nega a operação com um erro que chega aqui como 401.
+     A proteção contra duplicata vem da restrição unique (dispositivo, seq):
+     um reenvio volta 409, tratado abaixo como "já gravado". */
+  const url = `${baseSupabase()}/rest/v1/${SUPABASE.tabela}`;
   const corpo = JSON.stringify({
     dispositivo: r.dispositivo, seq: r.seq, iso: r.iso, nome: r.nome,
     perfil: r.perfil, redacao: r.redacao, palpite: r.palpite, notas: r.notas,
@@ -867,6 +884,12 @@ async function enviarRemoto(r){
       return true;
     }
     resp = alternativa;
+  }
+  if (!resp.ok && resp.status !== 409){
+    // A resposta do Supabase traz a causa em texto; sem ela o diagnóstico vira adivinhação.
+    let detalhe = '';
+    try { detalhe = await resp.clone().text(); } catch(e){}
+    console.error('[Tutor.IA] Supabase respondeu ' + resp.status + ': ' + (detalhe || '(corpo vazio)'));
   }
   if (resp.status === 401 || resp.status === 403){
     console.error('[Tutor.IA] Supabase recusou a chave (' + resp.status + ').' +
