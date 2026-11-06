@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tutor.IA — Demonstração e avaliação</title>
+<style>
+/* =========================================================================
+   Tutor.IA — Sistema offline da ação extensionista (FLIM 2026)
+   Fluxo único: demonstração da correção → avaliação do participante.
+   Arquivo único, sem CDN e sem rede. Abrir direto do disco (file://).
+   ========================================================================= */
+:root{
+  --indigo:#4f46e5;--indigo-500:#6366f1;--blue:#3b82f6;
+  --slate-50:#f8fafc;--slate-100:#f1f5f9;--slate-200:#e2e8f0;--slate-300:#cbd5e1;
+  --slate-400:#94a3b8;--slate-500:#64748b;--slate-600:#475569;--slate-700:#334155;--slate-800:#1e293b;
+  --emerald:#10b981;--amber:#f59e0b;--red:#ef4444;--vinho:#7b1b2d;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color:var(--slate-800);min-height:100vh;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(1200px 600px at 10% -10%,#e0e7ff 0,transparent 55%),
+             radial-gradient(1000px 500px at 110% 10%,#dbeafe 0,transparent 50%),#f6f8fc}
+.wrap{max-width:860px;margin:0 auto;padding:18px 16px 70px}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.2rem;letter-spacing:-.02em}
+.brand .dot{width:33px;height:33px;border-radius:11px;background:linear-gradient(135deg,var(--indigo),var(--blue));
+  display:grid;place-items:center;color:#fff;box-shadow:0 8px 20px rgba(79,70,229,.3)}
+.badge-offline{display:inline-flex;align-items:center;gap:7px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;
+  padding:6px 12px;border-radius:999px;font-size:.7rem;font-weight:700;line-height:1.3}
+.badge-offline .pulse{width:7px;height:7px;border-radius:50%;background:#f97316;flex:none}
+
+.card{background:rgba(255,255,255,.88);border:1px solid #fff;border-radius:1.9rem;padding:26px;
+  box-shadow:0 18px 45px rgba(30,41,59,.08)}
+.card+.card{margin-top:16px}
+h1{font-size:1.85rem;line-height:1.15;letter-spacing:-.03em;margin:0 0 10px;font-weight:800}
+h2{font-size:1.3rem;letter-spacing:-.02em;margin:0 0 8px;font-weight:800}
+p.lead{color:var(--slate-500);font-size:1rem;line-height:1.55;margin:0 0 18px;font-weight:500}
+.eyebrow{text-transform:uppercase;letter-spacing:.09em;font-size:.67rem;font-weight:800;color:var(--indigo-500);margin-bottom:8px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border:0;cursor:pointer;font-family:inherit;
+  font-weight:700;font-size:1rem;padding:16px 24px;border-radius:1.05rem;width:100%;
+  background:linear-gradient(90deg,var(--indigo),var(--blue));color:#fff;box-shadow:0 14px 28px rgba(79,70,229,.3);
+  transition:transform .18s}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.42;box-shadow:none;cursor:not-allowed}
+.btn.ghost{background:#fff;color:var(--slate-600);border:1px solid var(--slate-200);box-shadow:0 2px 6px rgba(30,41,59,.05)}
+.btn.sm{padding:11px 17px;font-size:.88rem;width:auto}
+.btn-row{display:flex;gap:11px;flex-wrap:wrap;margin-top:18px}
+.btn-row .btn{width:auto;flex:1 1 170px}
+.link{background:none;border:0;color:var(--slate-500);font-family:inherit;font-weight:600;font-size:.88rem;
+  cursor:pointer;padding:8px 0}
+.link:hover{color:var(--indigo)}
+
+/* ---------- Escolha ---------- */
+.opt{width:100%;text-align:left;background:#fff;border:1px solid var(--slate-200);border-radius:1.25rem;padding:19px;
+  cursor:pointer;font-family:inherit;display:block;margin-bottom:13px;transition:all .18s}
+.opt:hover{border-color:#c7d2fe;box-shadow:0 14px 30px rgba(79,70,229,.12);transform:translateY(-2px)}
+.opt .tag{display:inline-block;font-size:.65rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  padding:5px 10px;border-radius:999px;margin-bottom:9px}
+/* Na tela de escolha TODAS as etiquetas usam o mesmo estilo neutro: cor
+   diferente por tipo entregaria o resultado antes do palpite. */
+.tag.neutro{background:var(--slate-100);color:var(--slate-600)}
+.tag.real{background:#eef2ff;color:#4338ca}
+.tag.teste{background:#ecfdf5;color:#047857}
+.tag.anulada{background:#fef2f2;color:#b91c1c}
+.opt h3{margin:0 0 5px;font-size:1.05rem;font-weight:800}
+.opt p{margin:0;color:var(--slate-500);font-size:.88rem;line-height:1.5;font-weight:500}
+
+/* ---------- Leitura ---------- */
+.tema-box{background:linear-gradient(90deg,#eef2ff,#eff6ff);border:1px solid #e0e7ff;border-radius:1.05rem;
+  padding:15px 17px;margin-bottom:15px}
+.tema-box .lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:.09em;font-weight:800;color:var(--indigo-500)}
+.tema-box .val{font-size:1rem;font-weight:700;margin-top:4px;line-height:1.4}
+.redacao{background:var(--slate-50);border:1px solid var(--slate-200);border-radius:1.15rem;padding:21px;
+  max-height:44vh;overflow-y:auto;line-height:1.75;font-size:1rem;color:var(--slate-700);white-space:pre-wrap;
+  box-shadow:inset 0 2px 8px rgba(30,41,59,.05)}
+.meta-inline{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}
+.chip{background:#eef2ff;border:1px solid #e0e7ff;color:var(--slate-600);font-size:.76rem;font-weight:700;
+  padding:6px 12px;border-radius:.65rem}
+
+/* ---------- Palpite ---------- */
+.faixas{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:11px}
+.faixa{background:#fff;border:1px solid var(--slate-200);border-radius:1.05rem;padding:21px 12px;cursor:pointer;
+  font-family:inherit;text-align:center;transition:all .18s}
+.faixa:hover{border-color:var(--indigo-500);background:#f5f3ff;transform:translateY(-2px)}
+.faixa .n{display:block;font-size:1.25rem;font-weight:800;color:var(--indigo)}
+.faixa .d{display:block;font-size:.76rem;color:var(--slate-500);margin-top:4px;font-weight:600}
+
+/* ---------- Loading ---------- */
+.loading{text-align:center;padding:66px 10px}
+.loading .orb{width:92px;height:92px;margin:0 auto 24px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#818cf8,#4338ca);box-shadow:0 0 60px rgba(99,102,241,.45);
+  animation:float 2.6s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.bar{width:270px;height:8px;background:var(--slate-200);border-radius:999px;margin:26px auto 0;overflow:hidden}
+.bar i{display:block;height:100%;width:40%;border-radius:999px;
+  background:linear-gradient(90deg,var(--indigo),var(--blue));animation:slide 1.3s ease-in-out infinite}
+@keyframes slide{0%{margin-left:-40%}100%{margin-left:100%}}
+
+/* ---------- Resultado ---------- */
+.compare{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:11px;background:#fff;
+  border:1px solid var(--slate-200);border-radius:1.25rem;padding:17px;margin-bottom:20px}
+.compare div{text-align:center}
+.compare .k{font-size:.64rem;text-transform:uppercase;letter-spacing:.08em;color:var(--slate-400);font-weight:800}
+.compare .v{font-size:1.45rem;font-weight:800;margin-top:5px;letter-spacing:-.02em}
+.compare .v.ia{color:var(--indigo)}.compare .v.of{color:var(--emerald)}.compare .v.pa{color:var(--slate-600)}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:13px;margin-bottom:20px}
+.sum{background:rgba(255,255,255,.9);border:1px solid #fff;border-radius:1.4rem;padding:17px 13px;text-align:center;
+  box-shadow:0 10px 26px rgba(30,41,59,.07)}
+.sum .k{font-size:.64rem;text-transform:uppercase;letter-spacing:.09em;color:var(--slate-400);font-weight:800}
+.sum .v{font-size:1.75rem;font-weight:800;color:var(--slate-700);margin-top:6px;letter-spacing:-.03em}
+.sum.final{grid-column:span 2;background:linear-gradient(135deg,#34d399,#0d9488);border:0;color:#fff;
+  box-shadow:0 18px 36px rgba(13,148,136,.28)}
+.sum.final .k{color:rgba(255,255,255,.85)}
+.sum.final .v{font-size:3rem;color:#fff;line-height:1}
+.sum.final .pill{display:inline-block;margin-top:8px;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.3);
+  padding:5px 13px;border-radius:999px;font-size:.7rem;font-weight:800}
+.sec-title{display:flex;align-items:center;gap:10px;margin:24px 0 15px}
+.sec-title span{font-size:1.15rem;font-weight:800;letter-spacing:-.02em}
+.sec-title .ic{width:36px;height:36px;border-radius:.85rem;background:#e0e7ff;color:var(--indigo);display:grid;place-items:center}
+.comp{background:rgba(255,255,255,.9);border:1px solid var(--slate-100);border-radius:1.5rem;padding:21px;margin-bottom:15px;
+  box-shadow:0 10px 26px rgba(30,41,59,.06)}
+.comp .head{display:flex;justify-content:space-between;align-items:center;gap:13px;flex-wrap:wrap}
+.comp .nome{font-size:1.02rem;font-weight:800}
+.comp .nome em{font-style:normal;color:var(--indigo)}
+.comp .nota{background:var(--slate-50);border:1px solid var(--slate-100);border-radius:.95rem;padding:7px 15px;
+  font-size:1.15rem;font-weight:800}
+.comp .nota small{font-size:.78rem;color:var(--slate-400);font-weight:600}
+.track{height:10px;background:var(--slate-100);border-radius:999px;margin:17px 0;overflow:hidden;
+  box-shadow:inset 0 1px 3px rgba(30,41,59,.1)}
+.track i{display:block;height:100%;border-radius:999px;transition:width 1s ease-out}
+.obs{background:linear-gradient(135deg,var(--slate-50),#fff);border:1px solid var(--slate-100);border-radius:1.05rem;
+  padding:16px;color:var(--slate-600);line-height:1.65;font-weight:500;font-size:.94rem}
+.anulada{text-align:center;padding:38px 22px;background:#fff;border:1px solid #fecaca;border-radius:1.7rem}
+.anulada .ic{width:80px;height:80px;margin:0 auto 18px;border-radius:1.4rem;display:grid;place-items:center;
+  background:linear-gradient(135deg,#fee2e2,#ffe4e6);color:var(--red);font-size:2.2rem;font-weight:800}
+.anulada p{color:var(--slate-500);font-size:1.02rem;max-width:450px;margin:0 auto;line-height:1.6}
+
+/* ---------- Avaliação ---------- */
+.campo{width:100%;border:1px solid var(--slate-200);border-radius:.95rem;padding:14px 16px;font-family:inherit;
+  font-size:1rem;background:var(--slate-50);color:var(--slate-700)}
+.campo:focus{outline:none;border-color:var(--indigo-500);box-shadow:0 0 0 4px rgba(99,102,241,.1)}
+label.lbl{display:block;font-size:.66rem;text-transform:uppercase;letter-spacing:.09em;font-weight:800;
+  color:var(--indigo-500);margin:20px 0 8px}
+.perfil{display:flex;gap:9px;flex-wrap:wrap}
+.perfil button{flex:1 1 120px;background:#fff;border:1px solid var(--slate-200);border-radius:.85rem;padding:13px 8px;
+  font-family:inherit;font-weight:700;font-size:.88rem;color:var(--slate-600);cursor:pointer;transition:all .15s}
+.perfil button[aria-pressed="true"]{background:#eef2ff;border-color:var(--indigo-500);color:var(--indigo)}
+.item{padding:14px 0;border-bottom:1px solid var(--slate-100)}
+.item:last-of-type{border-bottom:0}
+.item .q{font-weight:700;font-size:.97rem;line-height:1.4;margin-bottom:11px}
+.item .q b{color:var(--indigo);margin-right:6px}
+.escala{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.escala button{background:#fff;border:1px solid var(--slate-200);border-radius:.75rem;padding:12px 3px;cursor:pointer;
+  font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .15s}
+.escala button .n{font-weight:800;font-size:1rem;color:var(--slate-600)}
+.escala button .l{font-size:.57rem;color:var(--slate-400);font-weight:700;text-align:center;line-height:1.2}
+.escala button[aria-pressed="true"]{background:linear-gradient(135deg,var(--indigo),var(--blue));border-color:transparent;
+  box-shadow:0 8px 18px rgba(79,70,229,.28)}
+.escala button[aria-pressed="true"] .n,.escala button[aria-pressed="true"] .l{color:#fff}
+.consent{display:flex;gap:11px;align-items:flex-start;background:#f8fafc;border:1px solid var(--slate-200);
+  border-radius:.95rem;padding:14px;margin-top:18px}
+.consent input{width:21px;height:21px;margin:1px 0 0;accent-color:var(--indigo);flex:none}
+.consent label{font-size:.84rem;color:var(--slate-600);line-height:1.5;font-weight:500}
+.ok{text-align:center;padding:38px 18px}
+.ok .ic{width:80px;height:80px;margin:0 auto 18px;border-radius:50%;background:linear-gradient(135deg,#34d399,#0d9488);
+  display:grid;place-items:center;color:#fff;font-size:2.3rem;box-shadow:0 16px 34px rgba(13,148,136,.3)}
+
+/* ---------- Painel / anexo ---------- */
+.contador{position:fixed;right:13px;bottom:13px;background:var(--slate-800);color:#fff;border-radius:999px;
+  padding:8px 15px;font-size:.76rem;font-weight:700;box-shadow:0 10px 24px rgba(0,0,0,.25);z-index:50;
+  border:0;font-family:inherit;cursor:pointer}
+table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:10px}
+th,td{border:1px solid var(--slate-300);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--slate-100);font-weight:800;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+td.num,th.num{text-align:center;width:40px}
+.medias .linha{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.medias .txt{flex:1;font-size:.83rem;font-weight:600;line-height:1.35}
+.medias .barra{width:130px;height:11px;background:var(--slate-200);border-radius:999px;overflow:hidden;flex:none}
+.medias .barra i{display:block;height:100%;background:linear-gradient(90deg,var(--indigo),var(--blue))}
+.medias .val{width:40px;text-align:right;font-weight:800;font-size:.86rem;flex:none}
+.cab-doc{display:none}
+.hidden{display:none}
+
+@media print{
+  @page{size:A4;margin:16mm}
+  body{background:#fff}
+  .wrap{max-width:none;padding:0}
+  .card{box-shadow:none;border:0;background:#fff;padding:0;border-radius:0}
+  .nao-imprime,.contador,.topbar{display:none !important}
+  .cab-doc{display:block;border-bottom:2px solid var(--vinho);padding-bottom:8px;margin-bottom:15px}
+  .cab-doc .u{color:var(--vinho);font-weight:800;font-size:1.05rem}
+  .cab-doc .s{font-size:.73rem;color:#333;line-height:1.4}
+  table{font-size:.7rem}th,td{padding:4px 6px}
+  .quebra{page-break-before:always}
+}
+@media(max-width:480px){h1{font-size:1.5rem}.card{padding:20px}.sum.final .v{font-size:2.5rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand"><span class="dot">T</span> Tutor<span style="color:var(--indigo)">.IA</span></div>
+    <div class="badge-offline" id="selo"><span class="pulse"></span> Modo offline · correções geradas previamente</div>
+  </div>
+
+  <!-- ===== 1. INÍCIO ===== -->
+  <section id="tela-inicio" class="card">
+    <div class="eyebrow">Universidade de Vassouras · Campus Maricá</div>
+    <h1>Uma IA consegue corrigir uma redação do ENEM?</h1>
+    <p class="lead">Escolha uma redação, arrisque a nota que você daria e veja o que o Tutor.IA respondeu nas cinco competências oficiais. Leva menos de dois minutos.</p>
+    <button class="btn" onclick="irPara('escolha')">Começar</button>
+  </section>
+
+  <!-- ===== 2. ESCOLHA ===== -->
+  <section id="tela-escolha" class="card hidden">
+    <div class="eyebrow">Passo 1</div>
+    <h2>Qual redação você quer ver sendo corrigida?</h2>
+    <p class="lead">Cada uma mostra um comportamento diferente do sistema.</p>
+    <div id="lista-redacoes"></div>
+    <button class="link" onclick="irPara('inicio')">← Voltar</button>
+  </section>
+
+  <!-- ===== 3. LEITURA ===== -->
+  <section id="tela-leitura" class="card hidden">
+    <div class="eyebrow">Passo 2 · Leia o texto</div>
+    <div class="tema-box"><div class="lbl">Tema</div><div class="val" id="leitura-tema"></div></div>
+    <div class="redacao" id="leitura-texto"></div>
+    <div class="meta-inline" id="leitura-meta"></div>
+    <div class="btn-row">
+      <button class="btn ghost" onclick="irPara('escolha')">Trocar redação</button>
+      <button class="btn" onclick="irPara('palpite')">Já li, quero arriscar a nota</button>
+    </div>
+  </section>
+
+  <!-- ===== 4. PALPITE ===== -->
+  <section id="tela-palpite" class="card hidden">
+    <div class="eyebrow">Passo 3 · Seu palpite</div>
+    <h2>Quanto você acha que essa redação tirou?</h2>
+    <p class="lead">Sem medo de errar. A graça é comparar depois.</p>
+    <div class="faixas">
+      <button class="faixa" onclick="palpitar('até 400')"><span class="n">até 400</span><span class="d">Fraca</span></button>
+      <button class="faixa" onclick="palpitar('400 a 600')"><span class="n">400 a 600</span><span class="d">Regular</span></button>
+      <button class="faixa" onclick="palpitar('600 a 800')"><span class="n">600 a 800</span><span class="d">Boa</span></button>
+      <button class="faixa" onclick="palpitar('acima de 800')"><span class="n">800+</span><span class="d">Excelente</span></button>
+    </div>
+    <button class="link" onclick="irPara('leitura')">← Voltar ao texto</button>
+  </section>
+
+  <!-- ===== 5. CARREGANDO ===== -->
+  <section id="tela-loading" class="card hidden">
+    <div class="loading">
+      <div class="orb"></div>
+      <h2>Carregando a correção...</h2>
+      <p class="lead" style="max-width:420px;margin:0 auto">Gerada pelo Tutor.IA antes do evento, com os cinco prompts de competência rodando em paralelo.</p>
+      <div class="bar"><i></i></div>
+    </div>
+  </section>
+
+  <!-- ===== 6. RESULTADO ===== -->
+  <section id="tela-resultado" class="hidden">
+    <div id="resultado-conteudo"></div>
+    <div class="card" style="margin-top:16px;text-align:center">
+      <h2>Agora conta pra gente</h2>
+      <p class="lead" style="margin-bottom:0">Cinco toques e uma linha, se quiser. É o que vai para o nosso relatório da faculdade.</p>
+      <div class="btn-row" style="justify-content:center">
+        <button class="btn ghost" onclick="irPara('escolha')">Ver outra redação</button>
+        <button class="btn" onclick="irPara('avaliacao')">Avaliar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 7. AVALIAÇÃO ===== -->
+  <section id="tela-avaliacao" class="card hidden">
+    <div class="eyebrow">Última etapa</div>
+    <h2>O que você achou?</h2>
+
+    <label class="lbl">Seu nome</label>
+    <input class="campo" id="nome" type="text" placeholder="Nome e sobrenome" autocomplete="off" oninput="validar()">
+
+    <label class="lbl">Seu vínculo com a educação</label>
+    <div class="perfil" id="perfil"></div>
+
+    <label class="lbl">Marque de 1 (discordo) a 5 (concordo)</label>
+    <div id="itens"></div>
+
+    <label class="lbl">Algo a melhorar ou que chamou sua atenção</label>
+    <textarea class="campo" id="comentario" rows="3" placeholder="Opcional, mas é o que mais ajuda a gente."></textarea>
+
+    <div class="consent">
+      <input type="checkbox" id="consent">
+      <label for="consent">Autorizo o uso desta resposta, de forma identificada, no relatório acadêmico da disciplina Práticas Extensionistas Integradoras.</label>
+    </div>
+
+    <div class="btn-row"><button class="btn" id="enviar" onclick="enviarAvaliacao()" disabled>Enviar</button></div>
+  </section>
+
+  <!-- ===== 8. FIM ===== -->
+  <section id="tela-fim" class="card hidden">
+    <div class="ok">
+      <div class="ic">✓</div>
+      <h2>Obrigado!</h2>
+      <p class="lead">Sua avaliação foi registrada. Boa feira!</p>
+      <div class="btn-row" style="justify-content:center">
+        <button class="btn" onclick="reiniciar()">Próximo participante</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 9. SENHA DO PAINEL ===== -->
+  <section id="tela-senha" class="card hidden">
+    <div class="eyebrow">Área da equipe</div>
+    <h2>Painel de respostas</h2>
+    <p class="lead">Esta parte é só para a equipe. Informe a senha para continuar.</p>
+    <input class="campo" id="senha" type="password" placeholder="Senha" autocomplete="off"
+           onkeydown="if(event.key==='Enter')conferirSenha()">
+    <div id="erro-senha" class="hidden" style="margin-top:10px;color:var(--red);font-size:.88rem;font-weight:600"></div>
+    <div class="btn-row">
+      <button class="btn ghost" onclick="reiniciar()">Voltar ao início</button>
+      <button class="btn" onclick="conferirSenha()">Entrar</button>
+    </div>
+  </section>
+
+  <!-- ===== 10. PAINEL DA EQUIPE / ANEXO ===== -->
+  <section id="tela-painel" class="card hidden">
+    <div class="cab-doc">
+      <div class="u">UNIVERSIDADE DE VASSOURAS</div>
+      <div class="s">Fundação Educacional Severino Sombra · FUSVE · Engenharia de Software<br>
+      Práticas Extensionistas Integradoras · 2026.2 · Campus Maricá · Docente: Laís C. Bordallo Pinheiro</div>
+    </div>
+    <div class="nao-imprime" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <h2 style="margin:0">Painel da equipe</h2>
+      <button class="btn ghost sm" onclick="reiniciar()">Voltar ao início</button>
+    </div>
+    <h2 style="font-size:1.1rem">Instrumento de avaliação aplicado — resultados tabulados</h2>
+    <div id="cabecalho-dados" style="font-size:.83rem;color:var(--slate-600);line-height:1.6"></div>
+    <h2 style="margin-top:20px;font-size:1rem">Médias por item (escala 1 a 5)</h2>
+    <div class="medias" id="medias"></div>
+    <h2 style="margin-top:20px;font-size:1rem">Respostas individuais</h2>
+    <div id="tabela"></div>
+    <h2 style="margin-top:20px;font-size:1rem" class="quebra">Comentários</h2>
+    <div id="comentarios" style="font-size:.83rem;line-height:1.6"></div>
+    <div style="margin-top:20px;font-size:.71rem;color:var(--slate-500);line-height:1.5">
+      Cada registro recebe data e hora locais e um código de integridade encadeado, calculado sobre o próprio
+      conteúdo somado ao código do registro anterior. Alterar ou remover qualquer resposta quebra a sequência a
+      partir dela, o que é verificável pela conferência exibida acima. Não substitui a lista de presença assinada.
+    </div>
+    <div class="btn-row nao-imprime">
+      <button class="btn sm" onclick="window.print()">Gerar PDF do anexo</button>
+      <button class="btn ghost sm" onclick="baixarCSV()">Baixar CSV</button>
+      <button class="btn ghost sm" onclick="baixarJSON()">Backup JSON</button>
+      <button class="btn ghost sm" onclick="document.getElementById('arq-importar').click()">Importar respostas</button>
+      <input type="file" id="arq-importar" accept=".json,.csv,text/csv,application/json"
+             style="display:none" onchange="importarArquivo(event)">
+      <button class="btn ghost sm" id="btn-limpar" onclick="limpar()"
+              style="color:var(--red);border-color:#fecaca">Apagar respostas</button>
+    </div>
+    <p class="nao-imprime" style="margin-top:10px;font-size:.75rem;color:var(--slate-500);line-height:1.5">
+      Apagar é definitivo e não tem como desfazer. Baixe o CSV antes, se os dados forem de participantes reais.
+    </p>
+  </section>
+
+</div>
+<button class="contador nao-imprime" id="contador" onclick="abrirPainel()">0 respostas</button>
+
+<script>
+/* ==========================================================================
+   DADOS DA DEMONSTRAÇÃO
+   O bloco abaixo é substituído automaticamente por scripts/gerar_demo.py.
+   NÃO apague os marcadores. Para colar à mão, troque só o que está entre eles.
+
+   Formato de cada correcao = resposta exata do POST /essays (CorrecaoResponse):
+     { redacao_id, zerou, motivo, tangenciou, nota_final,
+       competencias: [ { numero, nome, nota, observacao } ] }
+   ========================================================================== */
+/* ==== INICIO DADOS ==== */
+const REDACOES = [
+  {
+    id: "heranca_africana",
+    etiqueta: "ENEM 2024 · texto digitado",
+    classe: "neutro",
+    resumo: "Redação de um candidato real, com a nota oficial da banca guardada para a comparação do final.",
+    tema: "Desafios para a valorização da herança africana no Brasil",
+    notaOficial: 1000,
+    texto: "O livro \"Nós matamos o cão tinhoso\" de Luís Bernardo Honwana retrata a sociedade moçambicana durante a colonização portuguesa. Na obra literária, observa-se uma dinâmica social pautada pela inferiorização dos indivíduos negros, na qual o racismo está enraizado nas interações entre as pessoas, na qualidade de vida e na autoimagem de cada ser. Assim, ao inserir a imagem criada pelo livro no contexto brasileiro de ínfima valorização da herança africana, infere-se que o passado colonial persiste nas estruturas do Brasil, se manifestando a partir do apagamento sistemático da cultura afro-brasileira. Em razão disso, deve-se discutir o papel do Estado no setor escolar e cultural diante desse contexto de silenciamento.\n\nEm um primeiro momento, é necessário entender a relação entre a dinâmica social brasileira e a desvalorização da herança africana. Para fundamentar essa ideia, o filósofo brasileiro Ailton Krenak afirma que, no Brasil, existem dois grupos — a humanidade, formada pela elite econômica, e a subumanidade, a qual tem seus direitos negados e é constituída principalmente pelas populações marginalizadas socialmente, como os povos originários e os negros. Por conseguinte, entende-se que o apagamento da cultura africana é uma extensão do panorama da desigualdade social brasileira, já que essa desvalorização sistemática silencia as vozes de populações que são violentadas e oprimidas há séculos, o que favorece a manutenção dessas pessoas no grupo da subumanidade. Dessa forma, o Estado deve desenvolver medidas que visem valorizar e apoiar artistas e escritores relacionados à herança africana no Brasil.\n\nSob outra ótica, a compreensão acerca da importância da ancestralidade na formação da autoimagem e da noção de pertencimento de cada indivíduo é imperativa. Para isso, a filósofa brasileira Marilena Chauí defende a ideia de que, enquanto os animais são naturais, os humanos são culturais — ou seja, a cultura que cada pessoa está inserida compõe a essência desse ser. A partir disso, compreende-se que o silenciamento da herança africana nega a uma grande parte do povo brasileiro a sua própria essência, o que constitui uma violência estrutural e resulta numa noção de não pertencimento generalizada e em uma autoimagem defasada. Frente a isso, o Estado deve agir em prol da promoção de manifestações culturais afro-brasileiras.\n\nEm suma, conclui-se que a desvalorização da cultura africana está diretamente relacionada a um processo sistemático de silenciamento de grupos oprimidos e resulta na falta de pertencimento de muitos indivíduos. Portanto, cabe ao Estado, por meio de uma parceria entre o Ministério da Economia (ME) e o Ministério da Educação e da Cultura (MEC), desenvolver manifestações culturais afro-brasileiras nas escolas, como, por exemplo, peças teatrais e festivais de dança, música e arte, assim como investir financeiramente na promoção de artistas e escritores que têm suas carreiras relacionadas à herança africana. Por fim, essas ações serão responsáveis por impedir o perpetuamento da desvalorização da cultura africana no Brasil.",
+    correcao: {
+      "redacao_id": 0,
+      "zerou": false,
+      "motivo": "",
+      "tangenciou": false,
+      "nota_final": 1000,
+      "competencias": [
+            {
+                  "numero": 1,
+                  "nome": "Domínio da modalidade escrita formal da língua portuguesa",
+                  "nota": 200,
+                  "observacao": "Você demonstrou um excelente domínio da modalidade escrita formal da língua portuguesa ao longo de toda a redação. Seu texto flui muito bem, com períodos complexos e articulados com maestria, sem desvios significativos de ortografia, pontuação ou concordância. Apenas atente-se a pequenos detalhes de regência em construções futuras, como no trecho 'a cultura que cada pessoa está inserida' (onde o ideal, de acordo com a norma-padrão rigorosa, seria 'na qual' ou 'em que'). Continue lendo textos bem estruturados e revisando suas redações antes de passar a limpo para manter esse altíssimo nível gramatical."
+            },
+            {
+                  "numero": 2,
+                  "nome": "Compreensão do tema e repertório sociocultural",
+                  "nota": 200,
+                  "observacao": "Você demonstrou um domínio excelente do texto dissertativo-argumentativo e abordou o tema central de forma brilhante e direta. A articulação dos seus repertórios socioculturais foi extremamente produtiva: utilizar Ailton Krenak e Marilena Chauí para aprofundar os conceitos de subumanidade e formação cultural fortaleceu imensamente a sua argumentação. Seu texto é um exemplo perfeito de como integrar conhecimentos de diferentes áreas para sustentar uma tese. Para as próximas redações, mantenha exatamente essa estratégia de amarrar a citação à defesa do seu ponto de vista e não apenas deixá-la solta no texto."
+            },
+            {
+                  "numero": 3,
+                  "nome": "Organização e defesa do ponto de vista",
+                  "nota": 200,
+                  "observacao": "Sua redação apresenta um projeto de texto impecável e uma forte marca de autoria. As informações e os argumentos foram selecionados, organizados e relacionados ao tema de forma muito consistente, provando que você planejou estrategicamente o que escrever. A progressão das suas ideias, conectando o apagamento sistemático apontado por Krenak no segundo parágrafo com a questão de autoimagem trazida por Chauí no terceiro, construiu uma defesa sólida e sem contradições. Continue elaborando esse planejamento mental ou rascunho de estrutura antes de começar a escrever, pois isso garante o sucesso absoluto da sua argumentação."
+            },
+            {
+                  "numero": 4,
+                  "nome": "Mecanismos linguísticos para a argumentação (coesão)",
+                  "nota": 200,
+                  "observacao": "Seu texto possui uma articulação primorosa, demonstrando um repertório diversificado e preciso de recursos coesivos. Você utilizou operadores argumentativos de forma excelente tanto entre os parágrafos, como 'Sob outra ótica' e 'Em suma', quanto dentro deles, a exemplo de 'Por conseguinte', 'já que' e 'Frente a isso'. As relações lógicas entre as ideias ficaram muito claras e fluidas, sem repetições cansativas ou usos mecânicos. A dica é manter o excelente hábito de revisar a ligação entre os períodos para assegurar que seu raciocínio continue sendo guiado com essa mesma clareza nas futuras redações."
+            },
+            {
+                  "numero": 5,
+                  "nome": "Proposta de intervenção respeitando os direitos humanos",
+                  "nota": 200,
+                  "observacao": "Você elaborou uma proposta de intervenção excelente, que soluciona de forma precisa os problemas levantados nos parágrafos de desenvolvimento, respeitando totalmente os direitos humanos. É possível identificar claramente os cinco elementos válidos: o agente (Estado, via ME e MEC), a ação (desenvolver manifestações e investir financeiramente), o detalhamento (como peças teatrais e festivais), o meio e a finalidade (impedir o perpetuamento da desvalorização). A solução amarra o texto perfeitamente com a problemática do silenciamento escolar e cultural. Continue garantindo que sua proposta seja sempre detalhada, exequível e diretamente conectada aos argumentos que você construiu no texto."
+            }
+      ]
+}
+  },
+  {
+    id: "publicidade_infantil",
+    etiqueta: "ENEM 2014 · texto digitado",
+    classe: "neutro",
+    resumo: "Outra redação de candidato real, também com a nota oficial da banca para comparar no final.",
+    tema: "Publicidade infantil em questão no Brasil",
+    notaOficial: 1000,
+    texto: "Desde o início da expansão da rede dos meios de comunicação no Brasil , em especial o rádio e a televisão, a mídia publicitária tem veiculado propagandas destinadas ao público infantil , mesmo que os produtos ou serviços anunciados não sejam destinados a este. Na década de 1970, por exemplo, era transmitida no rádio a propaganda de um banco utilizando personagens folclóricos, chamando a atenção das crianças que, assim, persuadiam os pais a consumir.\n\nE´ sabido que, no período da infância, o ser humano ainda não desenvolveu claramente seu senso crítico, e assim é facilmente influenciado por personagens de desenhos animados, filmes, gibis, ou simplesmente pela combinação de sons e cores de que a publicidade dispõe. Os adolescentes também são alvo, numa fase em que o consumo pode ser sinônimo de autoafirmação. Ciente deste fato, a mídia cria os mais diversos produtos fazendo uso desses atributos, como brindes em lanches, produtos de higiene com imagens de personagens e até mesmo utilizando atores e modelos mirins nos comerciais.\n\nMuitos pais têm então se queixado do comportamento consumista de seus filhos, apelando para organizações de defesa dos direitos da criança e do adolescente . Em abril de 2014, foi aprovada uma resolução que julga abusiva essa publicidade infantil , gerando conflitos entre as empresas, organizações publicitárias e os defensores dos direitos deste público-alvo. Entretanto, tal resolução configura um importante passo dado pelo Brasil com relação ao marketing infantil . Alguns países cujo índice de escolaridade é maior que o brasileiro já possuem legislação que limita os conteúdos e horários de exibição dos comerciais destinados às crianças. Outros, como a Noruega, proíbem completamente qualquer publicidade infantil.\n\nA legislação brasileira necessita, portanto, continuar a romper com as barreiras impostas pela indústria publicitária, a fim de garantir que o público supracitado não seja alvo de interesses comerciais por sua inocência e fácil persuasão. No âmbito educacional , as escolas devem auxiliar na formação de cidadãos com discernimento e capacidade crítica. Desta forma, é importante que sejam ensinados e discutidos nas salas de aula os conceitos de cidadania, consumismo, publicidade e etc., adequando-os a cada faixa etária.",
+    correcao: {
+      "redacao_id": 0,
+      "zerou": false,
+      "motivo": "",
+      "tangenciou": false,
+      "nota_final": 960,
+      "competencias": [
+            {
+                  "numero": 1,
+                  "nome": "Domínio da modalidade escrita formal da língua portuguesa",
+                  "nota": 160,
+                  "observacao": "Você demonstrou um bom domínio da modalidade escrita formal, com uma estrutura sintática fluida e períodos completos ao longo da sua redação. No entanto, é preciso ter atenção a alguns desvios: há espaços indevidos antes de vírgulas e pontos finais (como em 'Brasil ,' e 'educacional ,'), um pequeno erro de acentuação/digitação em 'E´ sabido' e redundância no uso do 'e etc.'. Na sua próxima redação, reserve os minutos finais para fazer uma revisão atenciosa do seu texto focada em pontuação e acentuação, garantindo que esses detalhes não o distanciem da nota máxima."
+            },
+            {
+                  "numero": 2,
+                  "nome": "Compreensão do tema e repertório sociocultural",
+                  "nota": 200,
+                  "observacao": "Seu texto abordou o tema de maneira excelente, demonstrando um ótimo domínio da estrutura dissertativo-argumentativa, com proposição, desenvolvimento e conclusão bem divididos. Você trouxe um repertório sociocultural riquíssimo e produtivo, como o exemplo da publicidade do banco na década de 1970, a resolução de 2014 e a menção às legislações de outros países, como a Noruega. Continue apostando no uso dessas referências concretas, históricas e legislativas, pois elas fundamentam de forma muito sólida o seu ponto de vista."
+            },
+            {
+                  "numero": 3,
+                  "nome": "Organização e defesa do ponto de vista",
+                  "nota": 200,
+                  "observacao": "Você apresentou um excelente projeto de texto, conseguindo selecionar, organizar e relacionar as informações de forma muito consistente em defesa do seu ponto de vista. A progressão das suas ideias flui de forma muito lógica, partindo de um resgate histórico, analisando as fragilidades psicológicas da infância, e desaguando no aspecto legislativo, o que demonstra uma forte marca de autoria. Como dica, continue sempre cultivando esse planejamento prévio das ideias antes de escrever, pois ele é o que garante que a sua redação não tenha lacunas ou contradições."
+            },
+            {
+                  "numero": 4,
+                  "nome": "Mecanismos linguísticos para a argumentação (coesão)",
+                  "nota": 200,
+                  "observacao": "Você articulou muito bem as partes da sua redação, revelando um repertório diversificado de recursos coesivos. O emprego de operadores argumentativos entre os parágrafos, como 'Entretanto' e 'portanto', aliados aos mecanismos internos de coesão, como 'Ciente deste fato' e 'Desta forma', proporcionou uma leitura extremamente fluida e conectada. Mantenha essa prática de utilizar conectivos variados e precisos para amarrar suas frases e parágrafos, garantindo sempre o avanço da sua argumentação."
+            },
+            {
+                  "numero": 5,
+                  "nome": "Proposta de intervenção respeitando os direitos humanos",
+                  "nota": 200,
+                  "observacao": "Sua proposta de intervenção foi muito bem elaborada e dialoga diretamente com a discussão desenvolvida ao longo da sua redação. Você apresentou uma ação clara e agentes pertinentes, sugerindo que as escolas auxiliem na formação do senso crítico e discutam o consumismo nas salas de aula (modo/meio), visando formar cidadãos com discernimento (efeito) e trazendo um ótimo detalhamento ao mencionar a adequação 'a cada faixa etária'. Para seus futuros textos, continue estruturando a intervenção dessa forma completa, garantindo que os cinco elementos estejam sempre evidentes e bem amarrados à sua tese."
+            }
+      ]
+}
+  },
+  {
+    id: "envelhecimento",
+    etiqueta: "Manuscrita · transcrita pela IA",
+    classe: "neutro",
+    resumo: "Escrita à mão por uma estudante e transcrita pela plataforma. É a que mais se parece com o que chega na mesa do professor.",
+    tema: "Perspectivas acerca do envelhecimento na sociedade brasileira",
+    notaOficial: null,
+    texto: "De acordo com o Estatuto do Idoso, toda pessoa considerada idosa tem o direito à segurança, a saúde, ao trabalho e outras demais necessidades básicas para uma vida digna. Todavia, percebe-se que essa não é uma garantia recorrente na sociedade atual brasileira, uma vez que perspectivas acerca do envelhecimento perpetuam-se de forma negativa, como a pressão estética imposta e o desinteresse da sociedade pelo idoso.\n\nDiante disso, em primeira análise, a pressão estética em busca de uma aparência juvenil e vista como bonita é evidente. No filme \"A Substância\", é retratado um líquido que desconhecem de suas consequências, capaz de rejuvenescer quem a utiliza, mostrando o quão longe as pessoas podem ir pela sensação de jovialidade. Fora da ficção, é possível perceber semelhanças da obra com a realidade, trazida pela propagação de padrões de beleza. Tal problemática desencadeia sérios problemas de autoestima na população mais velha, como o desespero pelo autocuidado e a busca de um padrão não natural, junto de problemas de saúde física e mental. Embora o envelhecimento seja um processo natural e que chegará a todos, infelizmente a pressão estética ao entorno da velhice ainda é crescente.\n\nAdemais, o desinteresse pelo idoso é visto frequentemente na sociedade, negligenciando suas necessidades. De acordo com Zygmunt Bauman, a sociedade descarta o que é inútil. A fala de Bauman tem reflexos nos pensamentos da sociedade contemporânea, quando uma vez que o indivíduo não é capacitado para trabalhar e viver sozinho, é visto como inútil, elevando mais o pensamento de jovialidade eterna da parte afetada, com medo da solidão e negligência. Pensa-se que todo idoso recebe o apoio familiar e estatal, no entanto, parte da população é desinteressada, deixando-os a mercê de uma realidade indigna, deixados em lares ruins, sem visitas e esquecidos.\n\nPortanto, é perceptível que as perspectivas acerca do envelhecimento da sociedade brasileira são em suma negativas, e é um dever social combate-las, sendo imperativo que o Governo Federal juntamente do Estatuto do Idoso atuem juntos para a melhoria do tratamento e da qualidade de vida da população idosa, por meio de uma implementação de leis obrigatórias de cuidado ao idoso, e construção de lares que acolham-os - com formas e atividades de distração, acesso a saúde e o necessário para a vida digna -, a fim de dar uma maior qualidade de vida. Faz-se necessário também formas de coscientizar sobre a normalidade do envelhecimento, por meio de campanhas. Assim, podem ser tiradas essas perspectivas da sociedade.",
+    correcao: {
+      "redacao_id": 0,
+      "zerou": false,
+      "motivo": "",
+      "tangenciou": false,
+      "nota_final": 760,
+      "competencias": [
+            {
+                  "numero": 1,
+                  "nome": "Domínio da modalidade escrita formal da língua portuguesa",
+                  "nota": 120,
+                  "observacao": "Você demonstra um domínio mediano da modalidade escrita formal, apresentando alguns desvios gramaticais e sintáticos ao longo do texto. É possível notar falhas pontuais, como na regência de nomes e em trechos como 'um líquido que desconhecem de suas consequências', além de problemas de pontuação e de crase em 'direito à segurança, a saúde'. Para elevar sua nota na próxima redação, faça uma revisão atenta do seu texto final para corrigir concordâncias e eliminar construções truncadas."
+            },
+            {
+                  "numero": 2,
+                  "nome": "Compreensão do tema e repertório sociocultural",
+                  "nota": 160,
+                  "observacao": "Você apresenta um bom domínio da estrutura dissertativo-argumentativa e mobiliza repertórios socioculturais pertinentes, como o filme 'A Substância' e o sociólogo Zygmunt Bauman, articulando-os bem à sua tese. No entanto, para alcançar a nota máxima, é preciso aprofundar a discussão crítica desses repertórios, evitando que a análise fique um pouco previsível. Na próxima redação, procure relacionar a referência cultural de forma ainda mais íntima com o argumento defendido para conferir maior consistência crítica ao seu texto."
+            },
+            {
+                  "numero": 3,
+                  "nome": "Organização e defesa do ponto de vista",
+                  "nota": 160,
+                  "observacao": "Você construiu um projeto de texto claro e perceptível, com uma introdução que apresenta tese e argumentos bem definidos que são desenvolvidos nos parágrafos seguintes. Suas ideias mostram boa progressão e autoria, especialmente ao trazer exemplos do cotidiano e análises críticas consistentes. Para alcançar a nota máxima, procure refinar a conexão entre os argumentos dos parágrafos de desenvolvimento, garantindo que cada um aprofunde a tese de forma ainda mais amarrada. Na próxima redação, revise seu planejamento prévio para assegurar que cada parágrafo traga um desdobramento original e totalmente integrado ao seu ponto de vista central."
+            },
+            {
+                  "numero": 4,
+                  "nome": "Mecanismos linguísticos para a argumentação (coesão)",
+                  "nota": 160,
+                  "observacao": "Você articula bem as partes do seu texto, utilizando operadores interparágrafos como 'Diante disso' e 'Ademais' que garantem uma boa progressão lógica entre as ideias. O repertório de recursos coesivos é diversificado, embora ocorram algumas pequenas falhas na coesão interna, como em construções um pouco longas ou com pronomes colocados incorretamente, a exemplo de 'acolham-os'. Na próxima redação, mantenha esse cuidado com a conexão dos parágrafos e preste atenção na colocação pronominal e na escolha dos conectivos intraparágrafos para tornar sua leitura ainda mais fluida."
+            },
+            {
+                  "numero": 5,
+                  "nome": "Proposta de intervenção respeitando os direitos humanos",
+                  "nota": 160,
+                  "observacao": "Você elabora uma proposta de intervenção muito pertinente, trazendo elementos essenciais como o agente (Governo Federal), a ação, os meios e o detalhamento da medida de acolhimento. Contudo, faltou detalhar com maior precisão o efeito esperado de forma mais ampla e articulada com toda a discussão construída ao longo do texto. Na próxima redação, procure detalhar de forma mais explícita a finalidade da sua proposta e como ela impactará diretamente o problema apresentado para garantir a nota máxima."
+            }
+      ]
+}
+  },
+  {
+    id: "povos_tradicionais",
+    etiqueta: "Produzida pela equipe · texto digitado",
+    classe: "neutro",
+    resumo: "Escrita pelos desenvolvedores para testar o comportamento do sistema em um caso específico.",
+    tema: "Desafios para a valorização de comunidades e povos tradicionais no Brasil",
+    notaOficial: null,
+    texto: "Na contemporaneidade, a evolução tecnológica tem transformado profundamente a sociedade global, estabelecendo novos padrões de comunicação e comportamento. Diante desse cenário, a internet se consolidou como a principal ferramenta de democratização da informação, permitindo que indivíduos de diferentes classes sociais tenham acesso instantâneo a conteúdos educativos e culturais. Desse modo, torna-se imperioso analisar os impactos dessa revolução digital na formação da juventude.\n\nEm primeira análise, cabe pontuar que o uso de smartphones em sala de aula apresenta tanto benefícios quanto desafios pedagógicos. Por um lado, esses dispositivos funcionam como computadores de bolso que auxiliam em pesquisas rápidas. Por outro lado, as redes sociais e os jogos online atuam como fortes distratores, prejudicando o foco dos estudantes e dificultando a fixação do conteúdo ministrado pelos professores. Portanto, a falta de concentração gerada pelas notificações constantes mitiga o rendimento acadêmico.\n\nAdemais, a proliferação de notícias falsas, comumente chamadas de fake news, representa um grave entrave no ambiente virtual. A rapidez com que uma desinformação se espalha pelas plataformas de mensagens afeta a opinião pública e prejudica o debate saudável. Como consequência, muitos jovens acabam consumindo teorias sem embasamento científico, o que enfraquece o pensamento crítico e perpetua preconceitos no corpo social.\n\nInfere-se, portanto, que medidas urgentes são necessárias para mitigar os malefícios da era digital. Para tanto, o Ministério da Educação deve implementar o ensino de educação de mídia nas escolas públicas e privadas, por meio de palestras e oficinas práticas sobre checagem de fatos. Essa ação terá como objetivo conscientizar os alunos a utilizarem a internet de forma responsável. Somente assim, o Brasil poderá usufruir dos bônus tecnológicos sem sofrer com seus impactos negativos.",
+    correcao: {
+      "redacao_id": 0,
+      "zerou": true,
+      "motivo": "A redação apresenta fuga total ao tema. O tema proposto exige a discussão sobre os 'Desafios para a valorização de comunidades e povos tradicionais no Brasil', mas o texto aborda exclusivamente a evolução tecnológica, a era digital, o uso de smartphones por jovens e a disseminação de fake news, não fazendo qualquer menção a povos indígenas, quilombolas ou outras comunidades tradicionais.",
+      "tangenciou": false,
+      "nota_final": 0,
+      "competencias": [
+            {
+                  "numero": 1,
+                  "nome": "Domínio da modalidade escrita formal da língua portuguesa",
+                  "nota": 0,
+                  "observacao": "Não avaliada: redação anulada."
+            },
+            {
+                  "numero": 2,
+                  "nome": "Compreensão do tema e repertório sociocultural",
+                  "nota": 0,
+                  "observacao": "Não avaliada: redação anulada."
+            },
+            {
+                  "numero": 3,
+                  "nome": "Organização e defesa do ponto de vista",
+                  "nota": 0,
+                  "observacao": "Não avaliada: redação anulada."
+            },
+            {
+                  "numero": 4,
+                  "nome": "Mecanismos linguísticos para a argumentação (coesão)",
+                  "nota": 0,
+                  "observacao": "Não avaliada: redação anulada."
+            },
+            {
+                  "numero": 5,
+                  "nome": "Proposta de intervenção respeitando os direitos humanos",
+                  "nota": 0,
+                  "observacao": "Não avaliada: redação anulada."
+            }
+      ]
+}
+  }
+];
+/* ==== FIM DADOS ==== */
+
+/* ==========================================================================
+   CONFIGURAÇÃO DA AÇÃO E DO INSTRUMENTO
+   --------------------------------------------------------------------------
+   Os itens 1, 2, 4 e 5 são os itens 1, 2, 6 e 7 do Anexo B do template de
+   Relatório Final. Os itens 3, 4 e 5 do Anexo B (participação, ambiente
+   seguro, preparo para aplicar orientações) foram retirados por descreverem
+   uma oficina, formato que não corresponde a uma demonstração de dois minutos
+   em feira. O item 3 abaixo é específico do projeto e é o que de fato responde
+   à pergunta de pesquisa. Para voltar ao Anexo B completo, basta reinserir as
+   três frases nesta lista.
+   ========================================================================== */
+const ACAO = {
+  nome:  'Tutor.IA: correção automatizada de redações do ENEM como apoio ao trabalho docente',
+  local: 'FLIM 2026 — Orla do Parque Nanci, Maricá (RJ)',
+  grupo: 'Luis Henrique da Costa Souza; Monique Evellin R. Gomes'
+};
+const ITENS = [
+  'A atividade foi fácil de compreender.',
+  'As informações apresentadas foram úteis para minha realidade.',
+  'A correção feita pela IA me pareceu coerente com a redação.',
+  'Recomendaria esta atividade a outras pessoas.',
+  'De modo geral, fiquei satisfeito(a).'
+];
+const ROTULOS = ['Discordo totalmente','Discordo','Neutro','Concordo','Concordo totalmente'];
+const PERFIS  = ['Professor(a)','Estudante','Responsável','Outro'];
+const CHAVE   = 'tutoria_avaliacoes_flim_2026';
+
+/* ==== INICIO CONFIG ==== */
+/* ==========================================================================
+   CONFIGURAÇÃO DA EQUIPE
+   --------------------------------------------------------------------------
+   Este bloco inteiro é reescrito pelo build.js quando a página é publicada,
+   a partir das variáveis de ambiente. Os valores abaixo são os do arquivo
+   local, usado offline pela equipe.
+
+   painelHabilitado: quando false, a página NÃO tem painel nem contador. É
+   assim que a versão pública deve ser publicada: sem área da equipe, não há
+   senha para alguém descobrir lendo o código-fonte.
+
+   senhaPainel: conferida no navegador. Quem abre o código-fonte lê a senha.
+   Serve para o visitante não entrar sem querer, não para proteger dado.
+
+   supabaseKey: use a chave PUBLICÁVEL (sb_publishable_...) ou a anon legada.
+   Ela é feita para ficar exposta no navegador; quem protege os dados é a RLS,
+   e a policy criada só permite INSERT, nunca leitura.
+   ========================================================================== */
+const CONFIG = {
+  painelHabilitado: true,
+  senhaPainel: 'tutoria2026',
+  supabaseUrl: '',            // ex.: 'https://xxxxxxxx.supabase.co'
+  supabaseKey: '',            // sb_publishable_... (ou a anon legada)
+  tabela: 'avaliacoes_flim'
+};
+/* ==== FIM CONFIG ==== */
+
+const SENHA_PAINEL = CONFIG.senhaPainel;
+const SUPABASE = { url: CONFIG.supabaseUrl, anonKey: CONFIG.supabaseKey, tabela: CONFIG.tabela };
+const CHAVE_DISPOSITIVO = 'tutoria_id_dispositivo';
+
+/* ========================= ESTADO ========================= */
+const ROMANO = {1:'I',2:'II',3:'III',4:'IV',5:'V'};
+const TELAS = ['inicio','escolha','leitura','palpite','loading','resultado','avaliacao','fim','senha','painel'];
+let atual = null, palpiteRotulo = '', notas = {}, perfilSel = null;
+let respostas = [], persistenciaOk = true;
+let painelLiberado = false;      // vale só enquanto a aba estiver aberta
+let idDispositivo = '';          // identifica este navegador nas cadeias de integridade
+
+/* ========================= UTILIDADES ========================= */
+function irPara(t){
+  TELAS.forEach(x => document.getElementById('tela-'+x).classList.add('hidden'));
+  document.getElementById('tela-'+t).classList.remove('hidden');
+  document.getElementById('selo').style.display = (t==='painel'||t==='senha') ? 'none' : '';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function contar(txt){const l=txt.trim();return{
+  palavras:l?l.split(/\s+/).filter(Boolean).length:0,
+  paragrafos:l?l.split(/\n\s*\n/).filter(Boolean).length:0}}
+/* Mesmas regras visuais do CompetencyCard.jsx do app real. */
+function corBarra(n){
+  if(n>=200) return 'linear-gradient(90deg,#34d399,#14b8a6)';
+  if(n>=160) return 'linear-gradient(90deg,#60a5fa,#6366f1)';
+  if(n>=120) return 'linear-gradient(90deg,#fbbf24,#f97316)';
+  return 'linear-gradient(90deg,#f87171,#fb7185)';
+}
+function nivelLinguagem(n){return n>=160?'Avançada':n>=120?'Intermediária':n>=80?'Básica':'Iniciante'}
+function nivelDesempenho(n){return n>=900?'Desempenho de elite':n>=700?'Muito bom':n>=500?'Intermediário':'Em desenvolvimento'}
+/* FNV-1a 32 bits. Evidência de edição, não assinatura digital. */
+function hash(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}
+  return h.toString(16).padStart(8,'0').toUpperCase()}
+
+/* ========================= DEMONSTRAÇÃO ========================= */
+function montarEscolha(){
+  document.getElementById('lista-redacoes').innerHTML = REDACOES.map((r,i)=>`
+    <button class="opt" onclick="selecionar(${i})">
+      <span class="tag ${r.classe}">${esc(r.etiqueta)}</span>
+      <h3>${esc(r.tema)}</h3>
+      ${r.resumo?`<p>${esc(r.resumo)}</p>`:''}
+    </button>`).join('');
+}
+function selecionar(i){
+  atual = REDACOES[i];
+  const c = contar(atual.texto);
+  document.getElementById('leitura-tema').textContent = atual.tema;
+  document.getElementById('leitura-texto').textContent = atual.texto;
+  document.getElementById('leitura-meta').innerHTML =
+    `<span class="chip">${c.palavras} palavras</span><span class="chip">${c.paragrafos} parágrafos</span>`;
+  irPara('leitura');
+}
+function palpitar(rotulo){
+  palpiteRotulo = rotulo;
+  irPara('loading');
+  // Pausa curta só para dar ritmo. O selo no topo e o texto da tela deixam
+  // explícito que nada está sendo processado neste momento.
+  setTimeout(mostrarResultado, 2200);
+}
+function mostrarResultado(){
+  const d = atual.correcao, alvo = document.getElementById('resultado-conteudo');
+  if (d.zerou){
+    // O palpite aparece aqui também: o contraste entre a nota que a pessoa
+    // imaginou e a anulação é justamente o que torna este caso interessante.
+    alvo.innerHTML = `<div class="anulada">
+      <div class="ic">!</div><h2>Redação anulada</h2>
+      <p>${esc(d.motivo || 'Texto anulado segundo os critérios do ENEM.')}</p>
+      <div class="compare" style="margin:22px auto 0;max-width:420px">
+        <div><div class="k">Seu palpite</div><div class="v pa">${esc(palpiteRotulo)}</div></div>
+        <div><div class="k">Tutor.IA</div><div class="v" style="color:var(--red)">0</div></div>
+      </div></div>`;
+    irPara('resultado'); return;
+  }
+  const c = contar(atual.texto);
+  const compI = d.competencias.find(x => x.numero === 1);
+  alvo.innerHTML = `
+    <div class="card">
+      <div class="compare">
+        <div><div class="k">Seu palpite</div><div class="v pa">${esc(palpiteRotulo)}</div></div>
+        <div><div class="k">Tutor.IA</div><div class="v ia">${d.nota_final}</div></div>
+        ${atual.notaOficial!=null?`<div><div class="k">Nota oficial ENEM</div><div class="v of">${atual.notaOficial}</div></div>`:''}
+      </div>
+      <div class="summary">
+        <div class="sum final"><div class="k">Nota final</div><div class="v">${d.nota_final}</div>
+          <div class="pill">${nivelDesempenho(d.nota_final)}</div></div>
+        <div class="sum"><div class="k">Palavras</div><div class="v">${c.palavras}</div></div>
+        <div class="sum"><div class="k">Parágrafos</div><div class="v">${c.paragrafos}</div></div>
+        <div class="sum"><div class="k">Linguagem</div>
+          <div class="v" style="font-size:1.2rem;color:var(--indigo)">${nivelLinguagem(compI?compI.nota:0)}</div></div>
+      </div>
+      ${d.tangenciou?`<div class="obs" style="border-color:#fde68a;background:#fffbeb;margin-bottom:16px">
+        <strong>Atenção:</strong> o sistema identificou tangenciamento ao tema, o que limita as competências II, III e V a 40 pontos.</div>`:''}
+      <div class="sec-title"><div class="ic">◴</div><span>Detalhamento por competência</span></div>
+      ${d.competencias.map(x=>`
+        <div class="comp">
+          <div class="head">
+            <div class="nome">Competência ${ROMANO[x.numero]||x.numero} <em>${esc(x.nome)}</em></div>
+            <div class="nota">${x.nota}<small>/200</small></div>
+          </div>
+          <div class="track"><i style="width:${(x.nota/200)*100}%;background:${corBarra(x.nota)}"></i></div>
+          <div class="obs">${esc(x.observacao)}</div>
+        </div>`).join('')}
+    </div>`;
+  irPara('resultado');
+}
+
+/* ========================= AVALIAÇÃO ========================= */
+function montarFormulario(){
+  document.getElementById('perfil').innerHTML = PERFIS.map((p,i)=>
+    `<button type="button" aria-pressed="false" onclick="selPerfil(${i},this)">${p}</button>`).join('');
+  document.getElementById('itens').innerHTML = ITENS.map((t,i)=>`
+    <div class="item">
+      <div class="q"><b>${i+1}.</b>${t}</div>
+      <div class="escala">${[1,2,3,4,5].map(n=>`
+        <button type="button" aria-pressed="false" onclick="marcar(${i},${n},this)">
+          <span class="n">${n}</span><span class="l">${ROTULOS[n-1]}</span></button>`).join('')}</div>
+    </div>`).join('');
+}
+function selPerfil(i,el){
+  perfilSel = PERFIS[i];
+  [...el.parentNode.children].forEach(b=>b.setAttribute('aria-pressed','false'));
+  el.setAttribute('aria-pressed','true'); validar();
+}
+function marcar(item,nota,el){
+  notas[item] = nota;
+  [...el.parentNode.children].forEach(b=>b.setAttribute('aria-pressed','false'));
+  el.setAttribute('aria-pressed','true'); validar();
+}
+function validar(){
+  const ok = document.getElementById('nome').value.trim().length >= 2
+          && perfilSel !== null
+          && Object.keys(notas).length === ITENS.length;
+  document.getElementById('enviar').disabled = !ok;
+}
+document.getElementById('consent').addEventListener('change', validar);
+
+function enviarAvaliacao(){
+  const agora = new Date();
+  // A cadeia de integridade é POR DISPOSITIVO: assim ela continua válida
+  // mesmo depois de juntar respostas vindas de vários aparelhos.
+  const minhas = respostas.filter(x => x.dispositivo === idDispositivo);
+  const anterior = minhas.length ? minhas[minhas.length-1].codigo : 'INICIO';
+  const r = {
+    dispositivo: idDispositivo,
+    seq: minhas.length+1,
+    data: agora.toLocaleDateString('pt-BR'),
+    hora: agora.toLocaleTimeString('pt-BR'),
+    iso: agora.toISOString(),
+    nome: document.getElementById('nome').value.trim(),
+    perfil: perfilSel,
+    redacao: atual ? atual.id : '',
+    palpite: palpiteRotulo,
+    notas: ITENS.map((_,i)=>notas[i]),
+    comentario: document.getElementById('comentario').value.trim(),
+    autorizaIdentificacao: document.getElementById('consent').checked,
+    codigo: '',
+    sincronizado: false
+  };
+  r.codigo = hash(JSON.stringify({dispositivo:r.dispositivo,seq:r.seq,iso:r.iso,nome:r.nome,
+    perfil:r.perfil,notas:r.notas,comentario:r.comentario,anterior}));
+  respostas.push(r);
+  salvar(); atualizarContador(); irPara('fim');
+  sincronizarPendentes();   // só faz algo se o SUPABASE estiver configurado
+  if(!persistenciaOk) alert('Atenção da equipe: este navegador não está guardando as respostas em disco. Exporte o CSV pelo painel antes de fechar a aba.');
+}
+
+/* ===== Envio para o banco compartilhado (opcional) =====
+   Sem SUPABASE configurado, isto não faz nada e a coleta segue 100% local.
+   Com ele configurado, a resposta é gravada localmente PRIMEIRO e só depois
+   enviada: se a internet falhar, nada se perde e a tentativa é repetida. */
+const remotoAtivo = () => !!(SUPABASE.url && SUPABASE.anonKey);
+
+/* A chave publicável nova (sb_publishable_...) NÃO é um JWT; a anon legada é.
+   A chave vai sempre no header `apikey`. O `Authorization: Bearer` só é
+   enviado para a chave legada, que é um token: mandar uma chave não-JWT ali
+   pode ser recusado pelo gateway. */
+function cabecalhosSupabase(){
+  const h = {
+    'apikey': SUPABASE.anonKey,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=minimal,resolution=ignore-duplicates'
+  };
+  if (SUPABASE.anonKey.startsWith('eyJ')) h['Authorization'] = 'Bearer ' + SUPABASE.anonKey;
+  return h;
+}
+
+async function enviarRemoto(r){
+  // on_conflict + ignore-duplicates: se a resposta JÁ foi gravada numa tentativa
+  // anterior cuja confirmação se perdeu, o reenvio é aceito em silêncio em vez
+  // de devolver 409 e travar a fila de pendentes para sempre.
+  const url = `${SUPABASE.url}/rest/v1/${SUPABASE.tabela}?on_conflict=dispositivo,seq`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: cabecalhosSupabase(),
+    body: JSON.stringify({
+      dispositivo: r.dispositivo, seq: r.seq, iso: r.iso, nome: r.nome,
+      perfil: r.perfil, redacao: r.redacao, palpite: r.palpite, notas: r.notas,
+      comentario: r.comentario, autoriza_identificacao: r.autorizaIdentificacao,
+      codigo: r.codigo
+    })
+  });
+  if (resp.status === 401 || resp.status === 403)
+    console.error('[Tutor.IA] Supabase recusou a chave (', resp.status, '). Confira supabaseKey e a policy de INSERT.');
+  if (resp.status === 404)
+    console.error('[Tutor.IA] Tabela "' + SUPABASE.tabela + '" não encontrada. Rode o SQL de criação antes.');
+  // 409 = já existe lá: para efeito de sincronização, está resolvido.
+  return resp.ok || resp.status === 409;
+}
+
+let sincronizando = false;
+async function sincronizarPendentes(){
+  if (!remotoAtivo() || sincronizando) return;
+  sincronizando = true;
+  try{
+    for (const r of respostas){
+      if (r.sincronizado) continue;
+      try{
+        if (await enviarRemoto(r)) r.sincronizado = true;
+        // resposta recusada pela API (ex.: campo inválido): deixa pendente e
+        // segue para a próxima, em vez de travar toda a fila num registro só.
+      }
+      catch(e){ break; }   // sem rede: para aqui e tenta de novo depois
+    }
+    salvar(); atualizarContador();
+  } finally { sincronizando = false; }
+}
+window.addEventListener('online', sincronizarPendentes);
+function reiniciar(){
+  atual=null; palpiteRotulo=''; notas={}; perfilSel=null;
+  document.getElementById('nome').value=''; document.getElementById('comentario').value='';
+  document.getElementById('consent').checked=false;
+  montarFormulario(); validar(); irPara('inicio');
+}
+
+/* ========================= PERSISTÊNCIA ========================= */
+function carregar(){
+  try{ respostas = JSON.parse(localStorage.getItem(CHAVE) || '[]'); }
+  catch(e){ persistenciaOk=false; respostas=[]; }
+  try{
+    idDispositivo = localStorage.getItem(CHAVE_DISPOSITIVO) || '';
+    if(!idDispositivo){
+      idDispositivo = 'D' + Math.random().toString(36).slice(2,7).toUpperCase();
+      localStorage.setItem(CHAVE_DISPOSITIVO, idDispositivo);
+    }
+  }catch(e){ idDispositivo = 'DTEMP'; persistenciaOk = false; }
+  // Respostas gravadas antes desta versão não tinham dispositivo: adota as como deste aparelho.
+  respostas.forEach((r,i) => { if(!r.dispositivo){ r.dispositivo = idDispositivo; r.sincronizado = false; } });
+}
+function salvar(){
+  try{ localStorage.setItem(CHAVE, JSON.stringify(respostas)); }
+  catch(e){ persistenciaOk=false; }
+}
+function atualizarContador(){
+  const el = document.getElementById('contador');
+  if (!el) return;
+  const n = respostas.length;
+  let txt = n + (n===1 ? ' resposta' : ' respostas');
+  if (remotoAtivo()){
+    const pend = respostas.filter(r => !r.sincronizado).length;
+    txt += pend ? ` · ${pend} por enviar` : ' · enviadas';
+  }
+  el.textContent = txt;
+}
+
+/* ========================= PAINEL ========================= */
+function abrirPainel(){
+  if (!CONFIG.painelHabilitado) return;   // versão pública não tem painel
+  if (painelLiberado){ renderPainel(); irPara('painel'); return; }
+  document.getElementById('senha').value = '';
+  document.getElementById('erro-senha').classList.add('hidden');
+  irPara('senha');
+  setTimeout(()=>document.getElementById('senha').focus(), 150);
+}
+function conferirSenha(){
+  const campo = document.getElementById('senha');
+  const erro  = document.getElementById('erro-senha');
+  if (campo.value === SENHA_PAINEL){
+    painelLiberado = true;       // vale até a aba ser fechada
+    renderPainel(); irPara('painel');
+  } else {
+    erro.textContent = 'Senha incorreta.';
+    erro.classList.remove('hidden');
+    campo.value = ''; campo.focus();
+  }
+}
+function verificarCadeia(){
+  if(!respostas.length) return 'sem registros';
+  // Uma cadeia por aparelho: juntar respostas de vários dispositivos não quebra a conferência.
+  const porDisp = {};
+  respostas.forEach(r => (porDisp[r.dispositivo] = porDisp[r.dispositivo] || []).push(r));
+  const falhas = [];
+  for(const [disp, lista] of Object.entries(porDisp)){
+    lista.sort((a,b)=>a.seq-b.seq);
+    let anterior = 'INICIO';
+    for(const r of lista){
+      const esperado = hash(JSON.stringify({dispositivo:r.dispositivo,seq:r.seq,iso:r.iso,
+        nome:r.nome,perfil:r.perfil,notas:r.notas,comentario:r.comentario,anterior}));
+      if(esperado !== r.codigo){ falhas.push(`${disp} a partir do #${r.seq}`); break; }
+      anterior = r.codigo;
+    }
+  }
+  const nDisp = Object.keys(porDisp).length;
+  const origem = nDisp === 1 ? '1 aparelho' : `${nDisp} aparelhos`;
+  return falhas.length
+    ? `FALHA em ${falhas.join('; ')}`
+    : `cadeias íntegras (${origem}), nenhum registro alterado`;
+}
+function renderPainel(){
+  const n = respostas.length, g = new Date();
+  document.getElementById('cabecalho-dados').innerHTML = `
+    <strong>Ação:</strong> ${ACAO.nome}<br>
+    <strong>Local:</strong> ${ACAO.local}<br>
+    <strong>Equipe:</strong> ${ACAO.grupo}<br>
+    <strong>Instrumento:</strong> escala Likert de 5 pontos, ${ITENS.length} itens, adaptado do Anexo B<br>
+    <strong>Respostas coletadas:</strong> ${n}${remotoAtivo() ? ` (${respostas.filter(r=>!r.sincronizado).length} ainda não enviadas ao banco)` : ''}<br>
+    <strong>Documento gerado em:</strong> ${g.toLocaleDateString('pt-BR')} às ${g.toLocaleTimeString('pt-BR')}<br>
+    <strong>Conferência de integridade:</strong> ${verificarCadeia()}`;
+  document.getElementById('medias').innerHTML = ITENS.map((t,i)=>{
+    const m = n ? respostas.reduce((s,r)=>s+r.notas[i],0)/n : 0;
+    return `<div class="linha"><div class="txt">${i+1}. ${t}</div>
+      <div class="barra"><i style="width:${(m/5)*100}%"></i></div>
+      <div class="val">${m.toFixed(2)}</div></div>`;
+  }).join('') + (n?`<div style="margin-top:11px;font-weight:800;font-size:.89rem">Média geral: ${
+    (respostas.reduce((s,r)=>s+r.notas.reduce((a,b)=>a+b,0),0)/(n*ITENS.length)).toFixed(2)}</div>`:'');
+  document.getElementById('tabela').innerHTML = n ? `
+    <table><thead><tr><th class="num">#</th><th>Nome</th><th>Vínculo</th><th class="num">Data</th><th class="num">Hora</th>
+      ${ITENS.map((_,i)=>`<th class="num">${i+1}</th>`).join('')}
+      <th class="num">Méd.</th><th class="num">Imagem</th><th class="num">Aparelho</th><th>Código</th></tr></thead>
+      <tbody>${ordenadas().map((r,i)=>`<tr>
+        <td class="num">${i+1}</td><td>${esc(r.nome)}</td><td>${r.perfil}</td>
+        <td class="num">${r.data}</td><td class="num">${r.hora}</td>
+        ${r.notas.map(v=>`<td class="num">${v}</td>`).join('')}
+        <td class="num">${(r.notas.reduce((a,b)=>a+b,0)/ITENS.length).toFixed(1)}</td>
+        <td class="num">${r.autorizaIdentificacao?'Sim':'Não'}</td>
+        <td class="num" style="font-family:monospace;font-size:.68rem">${r.dispositivo}</td>
+        <td style="font-family:monospace;font-size:.68rem">${r.codigo}</td></tr>`).join('')}
+      </tbody></table>` : '<p style="color:var(--slate-500)">Nenhuma resposta coletada ainda.</p>';
+  const coms = ordenadas().filter(r=>r.comentario);
+  document.getElementById('comentarios').innerHTML = coms.length
+    ? coms.map(r=>`<p style="margin:0 0 9px"><strong>${esc(r.nome)} (${r.perfil}):</strong> ${esc(r.comentario)}</p>`).join('')
+    : '<p style="color:var(--slate-500)">Nenhum comentário registrado.</p>';
+}
+
+/* ========================= EXPORTAÇÃO ========================= */
+function baixar(nome,conteudo,tipo){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(["﻿"+conteudo],{type:tipo}));
+  a.download = nome; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+/* Ordem cronológica, que é a que faz sentido quando há vários aparelhos. */
+function ordenadas(){
+  return [...respostas].sort((a,b)=> (a.iso||'').localeCompare(b.iso||''));
+}
+
+function baixarCSV(){
+  const cab = ['dispositivo','seq','data','hora','iso','nome','vinculo','redacao','palpite',
+    ...ITENS.map((_,i)=>'item'+(i+1)),'media','autoriza_identificacao','comentario','codigo'];
+  const linhas = ordenadas().map(r=>[r.dispositivo,r.seq,r.data,r.hora,r.iso,
+    '"'+r.nome.replace(/"/g,'""')+'"',r.perfil,r.redacao,r.palpite,...r.notas,
+    (r.notas.reduce((a,b)=>a+b,0)/ITENS.length).toFixed(2),
+    r.autorizaIdentificacao?'sim':'nao',
+    '"'+(r.comentario||'').replace(/"/g,'""')+'"',r.codigo].join(';'));
+  baixar('tutoria_avaliacoes.csv',[cab.join(';'),...linhas].join('\r\n'),'text/csv;charset=utf-8');
+}
+
+/* ========================= IMPORTAR RESPOSTAS =========================
+   Serve para juntar, num aparelho só, o que foi coletado em outros: aceita o
+   backup JSON desta própria página e o CSV exportado do Supabase. Nada é
+   sobrescrito; registros repetidos (mesmo aparelho + mesma sequência) são
+   ignorados. Depois de importar, o anexo sai com a coleta inteira. */
+function separarCSV(linha, sep){
+  const campos = []; let atual = '', aspas = false;
+  for (let i = 0; i < linha.length; i++){
+    const c = linha[i];
+    if (aspas){
+      if (c === '"' && linha[i+1] === '"'){ atual += '"'; i++; }
+      else if (c === '"'){ aspas = false; }
+      else atual += c;
+    } else if (c === '"') aspas = true;
+    else if (c === sep){ campos.push(atual); atual = ''; }
+    else atual += c;
+  }
+  campos.push(atual);
+  return campos;
+}
+
+function lerCSV(texto){
+  const linhas = texto.replace(/^\ufeff/,'').split(/\r?\n/).filter(l => l.trim());
+  if (!linhas.length) return [];
+  const sep = (linhas[0].split(';').length > linhas[0].split(',').length) ? ';' : ',';
+  const cab = separarCSV(linhas[0], sep).map(h => h.trim().toLowerCase());
+  return linhas.slice(1).map(l => {
+    const v = separarCSV(l, sep);
+    const o = {}; cab.forEach((h,i) => o[h] = (v[i] ?? '').trim());
+    // notas: ou colunas item1..itemN, ou uma coluna "notas" no formato {5,4,5,5,4}
+    let notas = ITENS.map((_,i) => parseInt(o['item'+(i+1)], 10));
+    if (notas.some(isNaN) && o.notas){
+      notas = o.notas.replace(/[{}\[\]"]/g,'').split(',').map(x => parseInt(x.trim(), 10));
+    }
+    if (notas.length !== ITENS.length || notas.some(isNaN)) return null;
+    const iso = o.iso || o.criado_em || '';
+    const d = iso ? new Date(iso) : null;
+    const autoriza = String(o.autoriza_identificacao ?? o.autorizaidentificacao ?? '').toLowerCase();
+    return {
+      dispositivo: o.dispositivo || 'IMPORT',
+      seq: parseInt(o.seq, 10) || 0,
+      data: o.data || (d ? d.toLocaleDateString('pt-BR') : ''),
+      hora: o.hora || (d ? d.toLocaleTimeString('pt-BR') : ''),
+      iso, nome: o.nome || '', perfil: o.vinculo || o.perfil || '',
+      redacao: o.redacao || '', palpite: o.palpite || '', notas,
+      comentario: o.comentario || '',
+      autorizaIdentificacao: ['sim','true','t','1'].includes(autoriza),
+      codigo: (o.codigo || '').toUpperCase(),
+      sincronizado: true          // veio do banco ou de outro aparelho
+    };
+  }).filter(Boolean);
+}
+
+function importarArquivo(ev){
+  const arq = ev.target.files && ev.target.files[0];
+  ev.target.value = '';
+  if (!arq) return;
+  const leitor = new FileReader();
+  leitor.onload = () => {
+    let novas = [];
+    try{
+      if (/\.json$/i.test(arq.name)){
+        const j = JSON.parse(leitor.result);
+        novas = (Array.isArray(j) ? j : (j.respostas || [])).map(r => ({...r, sincronizado:true}));
+      } else {
+        novas = lerCSV(String(leitor.result));
+      }
+    }catch(e){ alert('Não consegui ler este arquivo: ' + e.message); return; }
+
+    if (!novas.length){ alert('Nenhuma resposta reconhecida neste arquivo.'); return; }
+    const existentes = new Set(respostas.map(r => r.dispositivo + '#' + r.seq));
+    let add = 0;
+    novas.forEach(r => {
+      const k = r.dispositivo + '#' + r.seq;
+      if (!existentes.has(k)){ respostas.push(r); existentes.add(k); add++; }
+    });
+    salvar(); atualizarContador(); renderPainel();
+    alert(`${add} resposta(s) importada(s). ${novas.length - add} já existia(m) e foram ignoradas.`);
+  };
+  leitor.readAsText(arq, 'utf-8');
+}
+function baixarJSON(){
+  baixar('tutoria_avaliacoes_backup.json',
+    JSON.stringify({acao:ACAO,itens:ITENS,respostas},null,2),'application/json');
+}
+
+/* ---------- Apagar respostas ----------
+   Confirmação em dois toques, sem diálogo do navegador: o primeiro toque
+   arma o botão e o segundo apaga. Se ninguém confirmar em 6 segundos, o
+   botão volta ao normal sozinho. Evita apagar a coleta por toque acidental
+   numa tela sensível ao toque. */
+let armadoLimpar = false, timerLimpar = null;
+function limpar(){
+  const b = document.getElementById('btn-limpar');
+  if (!respostas.length){ b.textContent = 'Nada para apagar';
+    setTimeout(()=>{ b.textContent = 'Apagar respostas'; }, 2000); return; }
+
+  if (!armadoLimpar){
+    armadoLimpar = true;
+    b.textContent = `Confirmar: apagar ${respostas.length} ${respostas.length===1?'resposta':'respostas'}`;
+    b.style.background = 'var(--red)'; b.style.color = '#fff'; b.style.borderColor = 'transparent';
+    timerLimpar = setTimeout(desarmarLimpar, 6000);
+    return;
+  }
+
+  clearTimeout(timerLimpar);
+  respostas = [];
+  try{ localStorage.removeItem(CHAVE); }catch(e){}
+  desarmarLimpar();
+  atualizarContador();
+  renderPainel();
+}
+function desarmarLimpar(){
+  armadoLimpar = false;
+  const b = document.getElementById('btn-limpar');
+  b.textContent = 'Apagar respostas';
+  b.style.background = ''; b.style.color = 'var(--red)'; b.style.borderColor = '#fecaca';
+}
+
+carregar(); montarEscolha(); montarFormulario(); atualizarContador(); sincronizarPendentes();
+// Na versão pública o contador nem existe: sem porta, não há senha a descobrir.
+if (!CONFIG.painelHabilitado) document.getElementById('contador').remove();
+</script>
+</body>
+</html>
