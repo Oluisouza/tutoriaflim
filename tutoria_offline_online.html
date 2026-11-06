@@ -803,18 +803,31 @@ function enviarAvaliacao(){
    enviada: se a internet falhar, nada se perde e a tentativa é repetida. */
 const remotoAtivo = () => !!(SUPABASE.url && SUPABASE.anonKey);
 
-/* A chave publicável nova (sb_publishable_...) NÃO é um JWT; a anon legada é.
-   A chave vai sempre no header `apikey`. O `Authorization: Bearer` só é
-   enviado para a chave legada, que é um token: mandar uma chave não-JWT ali
-   pode ser recusado pelo gateway. */
-function cabecalhosSupabase(){
+/* A chave vai nos DOIS headers: `apikey` e `Authorization: Bearer`. É o que o
+   supabase-js faz quando não há usuário logado, e vale tanto para a chave
+   publicável nova (sb_publishable_..., que não é JWT) quanto para a anon
+   legada. Só o `apikey` sozinho devolve 401.
+   `comApenasApikey` existe como segunda tentativa, caso algum gateway recuse
+   o Bearer não-JWT. */
+function cabecalhosSupabase(comApenasApikey){
   const h = {
     'apikey': SUPABASE.anonKey,
     'Content-Type': 'application/json',
     'Prefer': 'return=minimal,resolution=ignore-duplicates'
   };
-  if (SUPABASE.anonKey.startsWith('eyJ')) h['Authorization'] = 'Bearer ' + SUPABASE.anonKey;
+  if (!comApenasApikey) h['Authorization'] = 'Bearer ' + SUPABASE.anonKey;
   return h;
+}
+
+/* Avisa cedo sobre o erro mais comum de configuração: a chave copiada da tela
+   do Supabase em vez do botão Copy vem cortada, com reticências no fim. */
+function conferirChave(){
+  const k = SUPABASE.anonKey || '';
+  if (!k) return;
+  if (k.includes('…') || k.includes('...'))
+    console.error('[Tutor.IA] A chave contém reticências: foi copiada cortada da tela. Use o botão Copy do Supabase.');
+  else if (k.length < 40)
+    console.warn('[Tutor.IA] A chave tem só ' + k.length + ' caracteres e parece incompleta.');
 }
 
 /* A tela "Data API" do Supabase mostra a URL já com /rest/v1/ no fim, enquanto
@@ -825,23 +838,45 @@ function baseSupabase(){
   return SUPABASE.url.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
 }
 
+let soApikey = false;   // vira true se o gateway recusar o header Authorization
+
 async function enviarRemoto(r){
   // on_conflict + ignore-duplicates: se a resposta JÁ foi gravada numa tentativa
   // anterior cuja confirmação se perdeu, o reenvio é aceito em silêncio em vez
   // de devolver 409 e travar a fila de pendentes para sempre.
   const url = `${baseSupabase()}/rest/v1/${SUPABASE.tabela}?on_conflict=dispositivo,seq`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: cabecalhosSupabase(),
-    body: JSON.stringify({
-      dispositivo: r.dispositivo, seq: r.seq, iso: r.iso, nome: r.nome,
-      perfil: r.perfil, redacao: r.redacao, palpite: r.palpite, notas: r.notas,
-      comentario: r.comentario, autoriza_identificacao: r.autorizaIdentificacao,
-      codigo: r.codigo
-    })
+  const corpo = JSON.stringify({
+    dispositivo: r.dispositivo, seq: r.seq, iso: r.iso, nome: r.nome,
+    perfil: r.perfil, redacao: r.redacao, palpite: r.palpite, notas: r.notas,
+    comentario: r.comentario, autoriza_identificacao: r.autorizaIdentificacao,
+    codigo: r.codigo
   });
-  if (resp.status === 401 || resp.status === 403)
-    console.error('[Tutor.IA] Supabase recusou a chave (', resp.status, '). Confira supabaseKey e a policy de INSERT.');
+  let resp = await fetch(url, {
+    method: 'POST',
+    headers: cabecalhosSupabase(soApikey),
+    body: corpo
+  });
+  // 401 com os dois headers: tenta uma vez só com `apikey`, e guarda o que funcionou.
+  if (resp.status === 401 && !soApikey){
+    const alternativa = await fetch(url, {
+      method: 'POST', headers: cabecalhosSupabase(true), body: corpo
+    });
+    if (alternativa.ok || alternativa.status === 409){
+      soApikey = true;
+      console.warn('[Tutor.IA] Este projeto aceita só o header apikey. Ajustado.');
+      return true;
+    }
+    resp = alternativa;
+  }
+  if (resp.status === 401 || resp.status === 403){
+    console.error('[Tutor.IA] Supabase recusou a chave (' + resp.status + ').' +
+      '\n  1. A chave está completa? Use o botão Copy do Supabase, não selecione o texto da tela.' +
+      '\n  2. É a publishable key (sb_publishable_...)? A secret key não serve aqui.' +
+      '\n  3. A chave é deste projeto: ' + baseSupabase() + ' ?' +
+      '\n  4. A policy de INSERT para anon foi criada? (Passo 1 do guia)');
+    console.error('[Tutor.IA] chave em uso: ' + (SUPABASE.anonKey || '(vazia)').slice(0, 22) +
+      '... (' + (SUPABASE.anonKey || '').length + ' caracteres)');
+  }
   if (resp.status === 404)
     console.error('[Tutor.IA] 404 em: ' + url +
       '\n  Confira, nesta ordem: (1) o endereço acima está certo? supabaseUrl deve ser só o domínio, sem /rest/v1;' +
@@ -1126,7 +1161,7 @@ function desarmarLimpar(){
   b.style.background = ''; b.style.color = 'var(--red)'; b.style.borderColor = '#fecaca';
 }
 
-carregar(); montarEscolha(); montarFormulario(); atualizarContador(); sincronizarPendentes();
+carregar(); conferirChave(); montarEscolha(); montarFormulario(); atualizarContador(); sincronizarPendentes();
 // Na versão pública o contador nem existe: sem porta, não há senha a descobrir.
 if (!CONFIG.painelHabilitado) document.getElementById('contador').remove();
 </script>
