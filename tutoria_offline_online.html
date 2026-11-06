@@ -817,11 +817,19 @@ function cabecalhosSupabase(){
   return h;
 }
 
+/* A tela "Data API" do Supabase mostra a URL já com /rest/v1/ no fim, enquanto
+   a de Project Settings mostra só o domínio. As duas são coladas por engano, e
+   a diferença só aparece como um 404 confuso. Normaliza aqui: tira barras
+   finais e um /rest/v1 que já venha junto. */
+function baseSupabase(){
+  return SUPABASE.url.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
+}
+
 async function enviarRemoto(r){
   // on_conflict + ignore-duplicates: se a resposta JÁ foi gravada numa tentativa
   // anterior cuja confirmação se perdeu, o reenvio é aceito em silêncio em vez
   // de devolver 409 e travar a fila de pendentes para sempre.
-  const url = `${SUPABASE.url}/rest/v1/${SUPABASE.tabela}?on_conflict=dispositivo,seq`;
+  const url = `${baseSupabase()}/rest/v1/${SUPABASE.tabela}?on_conflict=dispositivo,seq`;
   const resp = await fetch(url, {
     method: 'POST',
     headers: cabecalhosSupabase(),
@@ -835,7 +843,9 @@ async function enviarRemoto(r){
   if (resp.status === 401 || resp.status === 403)
     console.error('[Tutor.IA] Supabase recusou a chave (', resp.status, '). Confira supabaseKey e a policy de INSERT.');
   if (resp.status === 404)
-    console.error('[Tutor.IA] Tabela "' + SUPABASE.tabela + '" não encontrada. Rode o SQL de criação antes.');
+    console.error('[Tutor.IA] 404 em: ' + url +
+      '\n  Confira, nesta ordem: (1) o endereço acima está certo? supabaseUrl deve ser só o domínio, sem /rest/v1;' +
+      '\n  (2) a tabela "' + SUPABASE.tabela + '" existe nesse projeto? (3) o SQL de criação foi executado?');
   // 409 = já existe lá: para efeito de sincronização, está resolvido.
   return resp.ok || resp.status === 409;
 }
