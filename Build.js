@@ -3,7 +3,7 @@
  *
  * Por que existe
  * --------------
- * O arquivo-fonte (tutoria_offline.html) guarda a configuração da equipe em
+ * O arquivo-fonte (tutoria_offline_online.html) guarda a configuração da equipe em
  * texto, para funcionar aberto do disco, sem internet e sem build. Para
  * publicar, este script reescreve APENAS o bloco de configuração a partir das
  * variáveis de ambiente e grava o resultado em dist/index.html. Assim as
@@ -30,7 +30,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ORIGEM = process.env.ARQUIVO_FONTE || 'tutoria_offline.html';
+const ORIGEM = process.env.ARQUIVO_FONTE || 'tutoria_offline_online.html';
 const SAIDA_DIR = 'dist';
 const INI = '/* ==== INICIO CONFIG ==== */';
 const FIM = '/* ==== FIM CONFIG ==== */';
